@@ -1,0 +1,147 @@
+---
+title: "Bootstrap para datos funcionales"
+output: html_notebook
+---
+
+#Bootstrap para datos simulados
+
+```{r, echo=FALSE}
+library(fda.usc)
+library(pracma)
+
+fdata.bootstrap2 <-function(fdataobj, E, ts, statistic=func.mean,alpha=0.05,nb=200,
+                           smo=0.0,draw=FALSE,draw.control=NULL,...){
+  if (!is.fdata(fdataobj)) fdataobj=fdata(fdataobj)
+  data<-fdataobj[["data"]]
+  estmues<-statistic(fdataobj,...)
+  nr<-nrow(fdataobj)
+  nc<-ncol(fdataobj)
+  tt =fdataobj[["argvals"]]
+  rtt=fdataobj[["rangeval"]]
+  names=fdataobj[["names"]]
+  distboot<-matrix(NA,nrow=nb)
+  estboot<-matrix(NA,nrow=nb,ncol=nc)
+  pb=txtProgressBar(min=0,max=nb,style=3)
+  for (i in 1:nb){
+    setTxtProgressBar(pb,i-0.5)
+    bmuestra<-fdataobj[sample(1:nr,size=nr,replace=TRUE),]
+    if (smo>0) {
+      bmuestra[["data"]]<-bmuestra[["data"]]+mvrnorm(n=nr,rep(0,nc),var(data)*smo)
+    }
+    stat<-statistic(bmuestra,...)
+    estboot[i,]<-stat[["data"]]
+    setTxtProgressBar(pb,i)
+  }
+  close(pb)
+  center<-estmues
+  #for (i in 1:nb){  aux<-fdata(estboot[i,],tt,rtt)
+  #  distboot[i]<-metric.lp(center,aux,...)  }
+  #print(dim(distboot))
+  distboot<-metric.lp(fdata(estboot,tt,rtt),center,...)
+  dist<-max(distboot[rank(distboot)<=floor((1-alpha)*nb)])
+  resample<-fdata(estboot,tt,rtt,names)
+  if (draw){
+    if (is.null(draw.control)) draw.control=list("col"=c("grey","blue","pink"),"lty"=c(2,1,1),"lwd"=c(1,2,1))
+    if (is.null(draw.control$lwd)) draw.control$lwd=c(1,2,1)
+    if (is.null(draw.control$lty)) draw.control$lty=c(2,1,1)
+    if (is.null(draw.control$col)) draw.control$col=c("grey","blue","pink")
+    plot(fdataobj,lwd=draw.control$lwd[1],lty=draw.control$lty[1],col=draw.control$col[1])
+    lines(resample[distboot<=dist],lwd=draw.control$lwd[3],lty=draw.control$lty[3],col=draw.control$col[3])
+    lines(estmues,lwd=draw.control$lwd[2],lty=draw.control$lty[2],col=draw.control$col[2])
+    lines(ts, E1, lwd=4, lty=1)
+    legend(x=min(tt),y=0.99*max(data),legend=c("original curves",stat$names$main,"bootstrap curves IN", "m(t)"),
+           lty=c(1,1,1,1),lwd=c(1,4,1,4), col=c("grey","blue","red", "black"), cex=0.6,box.col=0)
+  }
+  return(list("statistic"=estmues,"dband"= dist,"rep.dist"=distboot,
+              "resample"=resample,fdataobj=fdataobj))
+}
+
+fdata.bootstrap3 <-function(fdataobj, E, ts, statistic=func.mean,alpha=0.05,nb=200,
+                            smo=0.0,draw=FALSE,draw.control=NULL,...){
+  if (!is.fdata(fdataobj)) fdataobj=fdata(fdataobj)
+  data<-fdataobj[["data"]]
+  estmues<-statistic(fdataobj,...)
+  nr<-nrow(fdataobj)
+  nc<-ncol(fdataobj)
+  tt =fdataobj[["argvals"]]
+  rtt=fdataobj[["rangeval"]]
+  names=fdataobj[["names"]]
+  distboot<-matrix(NA,nrow=nb)
+  estboot<-matrix(NA,nrow=nb,ncol=nc)
+  pb=txtProgressBar(min=0,max=nb,style=3)
+  for (i in 1:nb){
+    setTxtProgressBar(pb,i-0.5)
+    bmuestra<-fdataobj[sample(1:nr,size=nr,replace=TRUE),]
+    if (smo>0) {
+      bmuestra[["data"]]<-bmuestra[["data"]]+mvrnorm(n=nr,rep(0,nc),var(data)*smo)
+    }
+    stat<-statistic(bmuestra,...)
+    estboot[i,]<-stat[["data"]]
+    setTxtProgressBar(pb,i)
+  }
+  close(pb)
+  center<-estmues
+  distboot<-metric.lp(fdata(estboot,tt,rtt),center,...)
+  dist<-max(distboot[rank(distboot)<=floor((1-alpha)*nb)])
+  resample<-fdata(estboot,tt,rtt,names)
+  if (draw){
+    if (is.null(draw.control)) draw.control=list("col"=c("grey","blue","pink"),"lty"=c(2,1,1),"lwd"=c(1,2,1))
+    if (is.null(draw.control$lwd)) draw.control$lwd=c(1,2,1)
+    if (is.null(draw.control$lty)) draw.control$lty=c(2,1,1)
+    if (is.null(draw.control$col)) draw.control$col=c("grey","blue","pink")
+    #plot(fdataobj,lwd=draw.control$lwd[1],lty=draw.control$lty[1],col=draw.control$col[1])
+    plot(resample[distboot<=dist],lwd=draw.control$lwd[3],lty=draw.control$lty[3],col=draw.control$col[3])
+    lines(estmues,lwd=draw.control$lwd[2],lty=draw.control$lty[2],col=draw.control$col[2])
+    lines(ts, E, lwd=4, lty=1)
+    legend(x=0,y=1,legend=c(stat$names$main,"bootstrap curves IN", "Var(t)"),
+           lty=c(1,1,1),lwd=c(1,4,4), col=c("red","blue","black"), cex=0.5,box.col=0)
+  }
+  return(list("statistic"=estmues,"dband"= dist,"rep.dist"=distboot,
+              "resample"=resample,fdataobj=fdataobj))
+}
+
+```
+
+Primero, veamos una muestra de tamaño 100 los modelos (1) y (2):
+
+```{r}
+kNs <- 100
+#100 equidistant points (ts = timesteps).
+kNc <- 100
+# Number of curves.
+ts <- linspace(0, 1, n = kNs) 
+# Initialize covariance matrix for first e(t) with zeroes.
+cov.e <- matrix(rep(0, len=kNs*kNs), nrow=kNs, ncol=kNs)
+# Initializ covariance matrix for h(t) with zeroes.
+cov.h <- matrix(rep(0, len=kNs*kNs), nrow=kNs, ncol=kNs) 
+E1 <- numeric(kNs) 
+# Fill up covariances and expected values as described in the paper.
+for (i in 1:kNs) {
+  E1[i] <- 10*ts[i]*(1-ts[i])
+  for (j in 1:kNs) {
+    cov.e[i,j] <- exp(-(abs(ts[i] - ts[j]))/0.3)
+    cov.h[i,j] <- min(ts[i], ts[j])
+  } 
+}
+mu <- numeric(kNs)
+e.S0 <- mvrnorm(n = kNc, mu=mu, Sigma=cov.e) 
+# Sample 1 to 5 error, first three with error e(t), last two with error h(t).
+e.S1 <- mvrnorm(n = kNc, mu=mu, Sigma=cov.h)
+S0 <- sweep(e.S0, 2, E1, "+")
+S1 <- sweep(e.S1, 2, E1, "+")
+A <- fdata(S0, ts)
+B <- fdata(S1, ts)
+plot(A)
+
+```
+```{r}
+plot(B)
+```
+
+Ahora, vamos a considerar 
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
